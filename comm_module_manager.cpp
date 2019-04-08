@@ -42,7 +42,8 @@ Lwm2mObject object_table[MSG_LAST_SIGNAL] = {
         .object_id = 3200,
         .instance_id = 1,
         .resource_id = 5500,
-        .value = 0
+        .value = 0,
+		.observed = false,
         },
     /* DIGITAL_OUTPUT */
     {   .message_id = 0,
@@ -50,7 +51,8 @@ Lwm2mObject object_table[MSG_LAST_SIGNAL] = {
         .object_id = 3201,
         .instance_id = 1,
         .resource_id = 5550,
-        .value = 0
+        .value = 0,
+		.observed = false,
         },
 };
 
@@ -134,9 +136,9 @@ void write_callback(void)
 {
     Lwm2mObject *obj = new(Lwm2mObject);
     
-    if (comm_module_driver_parse_urc("%d,%d,%d,%d,5,1,%d,0\r\n", &obj->message_id, 
+    if (comm_module_driver_parse_urc("%d,%d,%d,%d,%*s\r\n", &obj->message_id,
                                      &obj->object_id, &obj->instance_id,
-                                     &obj->resource_id, &obj->value) == true)
+                                     &obj->resource_id) == true)
     {
         printf("WRITE REQUEST:\r\n");
         printf("message_id[%d]\r\n",obj->message_id);
@@ -148,11 +150,10 @@ void write_callback(void)
         mail_t *mail = system_mailbox.alloc();
         mail->action = MSG_WRITE_REQUEST;
         mail->value = obj->value;
-        mail->signal = map_object_to_signal(obj);
-        mail->data = &object_table[mail->signal];
+        mail->data = (void*) obj;
+
         system_mailbox.put(mail);
     }  
-    delete(obj);
 }
 
 
@@ -172,11 +173,10 @@ void read_callback(void)
         
         mail_t *mail = system_mailbox.alloc();
         mail->action = MSG_READ_REQUEST;
-        mail->signal = map_object_to_signal(obj);
-        mail->data = &object_table[mail->signal];
+        mail->data = (void*) obj;
+
         system_mailbox.put(mail);
     }  
-    delete(obj);
 }
         
 void observe_callback(void)
@@ -197,13 +197,10 @@ void observe_callback(void)
         mail_t *mail = system_mailbox.alloc();
         mail->action = MSG_OBSERVE_REQUEST;
         
-        /* search in object_table looking for obj/ins/res match */
-        mail->signal = map_object_to_signal(obj);
-        mail->data = (void*) &object_table[mail->signal];
+        mail->data = (void*) obj;
         
         system_mailbox.put(mail);
     }
-    delete(obj);
 }
        
 
@@ -282,10 +279,10 @@ void comm_manager_notify_server(message_signal_name_t signal, int value)
     switch(signal)
     {   
         case MSG_DIGITAL_INPUT:
-            snprintf(atcmd_buf, MAX_BUF, "at+qlwnotify=3200,0,5500,5,1,%d", value);
+            snprintf(atcmd_buf, MAX_BUF, "at+qlwnotify=3200,1,5500,5,1,%d", value);
             break;
         case MSG_DIGITAL_OUTPUT:
-            snprintf(atcmd_buf, MAX_BUF, "at+qlwnotify=3201,0,5550,5,1,%d", value);
+            snprintf(atcmd_buf, MAX_BUF, "at+qlwnotify=3201,1,5550,5,1,%d", value);
             break;
         default:
             break;
@@ -294,12 +291,15 @@ void comm_manager_notify_server(message_signal_name_t signal, int value)
     if (atcmd_buf != NULL)
     {
      //   comm_module_driver_send_atcmd_atomic(atcmd_buf);
-        printf("%s\r\n", atcmd_buf);
+    	comm_module_driver_send_atcmd_and_waitfor_urc(atcmd_buf, "+QLWURC: 4,");
     }
 } 
 void comm_module_manager_reply_request(message_notification_type_t request, Lwm2mObject *obj)
 {
     char buf[MAX_BUF] = { 0 };
+    message_signal_name_t signal = map_object_to_signal(obj);
+	/* search in object_table looking for obj/ins/res match */
+
     printf("request [%d]\r\n", request);
     printf("message_id[%d]\r\n", obj->message_id);
     printf("flag[%d]\r\n", obj->flag);
@@ -312,17 +312,25 @@ void comm_module_manager_reply_request(message_notification_type_t request, Lwm2
     {
         case MSG_OBSERVE_REQUEST:
             /* accept all the observes*/
-            snprintf(buf, MAX_BUF, "AT+QLWOBSRSP=%d,1,%d,%d,%d,5,%d,0", obj->message_id,
-                        obj->object_id, obj->instance_id, obj->resource_id, obj->value);
+            snprintf(buf, MAX_BUF, "AT+QLWOBSRSP=%d,1,%d,%d,%d,5,1,%d,0", obj->message_id,
+                        obj->object_id, obj->instance_id, obj->resource_id, object_table[signal].value);
+            if (obj->flag == 0)
+            {
+            	object_table[signal].observed = true;
+            }
+            else
+            {
+            	object_table[signal].observed = false;
+            }
             break;
         case MSG_READ_REQUEST:
             /* return the cached value */
-            snprintf(buf, MAX_BUF, "AT+QLWRDRSP=%d,1,%d,%d,%d,5,%d,0", obj->message_id,
-                        obj->object_id, obj->instance_id, obj->resource_id, obj->value);
+            snprintf(buf, MAX_BUF, "AT+QLWRDRSP=%d,1,%d,%d,%d,5,1,%d,0", obj->message_id,
+                        obj->object_id, obj->instance_id, obj->resource_id, object_table[signal].value);
             break;
         case MSG_WRITE_REQUEST:
             /* reject any write request */
-            snprintf(buf, MAX_BUF, "AT+AT+QLWWRRSP=%d,12", obj->message_id);
+            snprintf(buf, MAX_BUF, "AT+QLWWRRSP=%d,12", obj->message_id);
             break;
         default:
             printf("REQUEST [%d] not supported\r\n", request);
@@ -369,7 +377,14 @@ void comm_manager_task(void)
                     /* only report the values if the module is registered */
                     if (module_state == MODULE_CONFIGURED)
                     {
-                        comm_manager_notify_server(mail->signal, object_table[mail->signal].value);
+                    	if (object_table[mail->signal].observed == true)
+                    	{
+                    		comm_manager_notify_server(mail->signal, object_table[mail->signal].value);
+                    	}
+                    	else
+                    	{
+                    		printf("Object[%d] is not observed\r\n",object_table[mail->signal].object_id);
+                    	}
                     }
                     break;
                 case MSG_UPDATE_REGISTRATION:
@@ -387,8 +402,8 @@ void comm_manager_task(void)
                 case MSG_OBSERVE_REQUEST:                    
                 case MSG_READ_REQUEST:      
                 case MSG_WRITE_REQUEST:      
-                        /* use the cached value */
                         comm_module_manager_reply_request(mail->action, (Lwm2mObject*) mail->data);
+                    	delete ((Lwm2mObject*) mail->data);
                     break;
                 default:
                     printf("action [%d] not supported yet\r\n", mail->action);

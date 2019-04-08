@@ -23,7 +23,7 @@
 #define xstr(a) str(a)
 #define str(a) #a
 
-#define LED_PERIOD_IN_SECONDS (20)  
+#define LED_PERIOD_IN_SECONDS (10)
 
 #define MODULE_FW_VERSION "BC66NBR01A07_TWJH_BETA0328"
 

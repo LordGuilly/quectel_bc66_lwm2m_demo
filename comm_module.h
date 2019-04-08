@@ -30,6 +30,7 @@ class Lwm2mObject {
         int instance_id;
         int resource_id;
         int value;
+        bool observed;
 }; 
 
 typedef enum {
