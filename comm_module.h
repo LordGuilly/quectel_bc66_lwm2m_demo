@@ -32,11 +32,18 @@ class Lwm2mObject {
         int value;
 }; 
 
+typedef enum {
+	MODULE_RESET,
+	MODULE_REGISTERED,
+	MODULE_CONFIGURED,
+} module_state_t;
+
 void comm_manager_task(void);
 
 void comm_module_driver_init(void);
 bool comm_module_driver_send_atcmd_seq(char *atcmd_seq[]);
 bool comm_module_driver_send_atcmd_atomic(const char* atcmd);
+bool comm_module_driver_send_atcmd_and_waitfor_urc(const char *atcmd, const char *urc);
 bool comm_module_driver_get_module_version(char* version);
 void comm_module_driver_check_for_urcs(void);
 void comm_module_driver_register_oob(const char *prefix, Callback<void()> cb);

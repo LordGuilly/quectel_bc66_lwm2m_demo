@@ -26,11 +26,11 @@
 
 
 
-#define REGISTRATION_URC    "+QLWURC: reg,"
-#define DEREGISTRATION_URC  "+QLWURC: dereg,"
-#define SERVER_OBSERVE_ACTION_URC   "+QLWURC: 0"
-#define SERVER_READ_ACTION_URC      "+QLWURC: 1"
-#define SERVER_WRITE_ACTION_URC     "+QLWURC: 2"
+#define REGISTRATION_URC    "+QLWURC:reg,"
+#define DEREGISTRATION_URC  "+QLWURC:dereg,"
+#define SERVER_OBSERVE_ACTION_URC   "+QLWURC: 0,"
+#define SERVER_READ_ACTION_URC      "+QLWURC: 1,"
+#define SERVER_WRITE_ACTION_URC     "+QLWURC: 2,"
 
 
 #define COMM_MANAGER_MAILBOX_BLOCK_IN_MS (1000)
@@ -56,6 +56,7 @@ Lwm2mObject object_table[MSG_LAST_SIGNAL] = {
 
 char *atcmd_init_seq[] = { 
             "AT",
+			"ATE0",
             "AT+QCGDEFCONT=\"IP\"," xstr(NBIOT_SERVICE_PROVIDER_APN),
             "AT+CPSMS=0",
             "AT+QSCLK=0",
@@ -70,11 +71,10 @@ char *atcmd_lwm2m_setup_seq[] = {
                               xstr(LWM2M_SERVER_PORT) "," \
                               xstr(LWM2M_DEVICE_IDENTIFIER) "," \
                               xstr(LWM2M_DEVICE_LIFETIME) ",3",
-            "at+qlwaddobj=3200,1,1,\"5500\"",
-            "at+qlwaddobj=3201,1,1,\"5550\"",
-            "at+qlwreg",
+			"at+qlwreg",
             NULL 
             };
+
 
 message_signal_name_t map_object_to_signal(Lwm2mObject *obj)
 {
@@ -245,15 +245,34 @@ void comm_manager_init_modem(void)
         printf("\r\n WRONG modemversion, got[%s], expected[%s]\r\n", modem_version, MODULE_FW_VERSION);        
         exit(1);
     }
-    /*
+
     if (comm_module_driver_send_atcmd_seq(atcmd_lwm2m_setup_seq) == false)
     {
         printf("\r\n atcmd_lwm2m_setup_seq FAILED\r\n");     
         exit(1);
     }
-    */
+
 }
 
+bool comm_manager_add_custom_objects(void)
+{
+	bool retval = true;
+
+	/* delete both objects, don't care about errors, as they may not exist */
+	comm_module_driver_send_atcmd_and_waitfor_urc("at+qlwdelobj=3200", "+QLWDELOBJ :");
+	comm_module_driver_send_atcmd_and_waitfor_urc("at+qlwdelobj=3201", "+QLWDELOBJ :");
+
+	if (comm_module_driver_send_atcmd_and_waitfor_urc("at+qlwaddobj=3200,1,1,\"5500\"", "+QLWADDOBJ :0") == false)
+	{
+		retval = false;
+	}
+
+	if (comm_module_driver_send_atcmd_and_waitfor_urc("at+qlwaddobj=3201,1,1,\"5550\"", "+QLWADDOBJ :0") == false)
+	{
+		retval = false;
+	}
+	return retval;
+}
 void comm_manager_notify_server(message_signal_name_t signal, int value)
 {
     char atcmd_buf[MAX_BUF] = { 0 };
@@ -319,7 +338,7 @@ void comm_module_manager_reply_request(message_notification_type_t request, Lwm2
 void comm_manager_task(void)
 {   
     int pattern_id;
-    int module_registered = 0;
+    module_state_t module_state = MODULE_RESET;
 
     pattern_id = io_module_set_fast_state_pattern();
     comm_module_driver_init();
@@ -348,14 +367,22 @@ void comm_manager_task(void)
                     /* store the value in the cache, for future use */
                     object_table[mail->signal].value = mail->value;
                     /* only report the values if the module is registered */
-                    if (module_registered != 0)
+                    if (module_state == MODULE_CONFIGURED)
                     {
                         comm_manager_notify_server(mail->signal, object_table[mail->signal].value);
                     }
                     break;
                 case MSG_UPDATE_REGISTRATION:
                     printf("registration value[%d]\r\n", mail->value);
-                    module_registered = mail->value;
+                    if (mail->value == 1)
+                    {
+                    	module_state = MODULE_REGISTERED;
+                    }
+                    if (comm_manager_add_custom_objects() == true)
+                    {
+                    	module_state = MODULE_CONFIGURED;
+                    }
+                    printf("module_state[%d]\r\n", module_state);
                     break;
                 case MSG_OBSERVE_REQUEST:                    
                 case MSG_READ_REQUEST:      

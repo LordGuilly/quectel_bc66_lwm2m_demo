@@ -72,6 +72,28 @@ bool comm_module_driver_send_atcmd_atomic(const char* atcmd)
     return (retval);
 }
 
+bool comm_module_driver_send_atcmd_and_waitfor_urc(const char *atcmd, const char *urc)
+{
+    bool retval = false;
+
+    if (_parser->send(atcmd) == false)
+    {
+        printf("Error sending [%s]\r\n",atcmd);
+    }
+    else if (_parser->recv("OK") == false)
+    {
+        printf("Error receiving OK\r\n");
+    }
+    else if (_parser->recv(urc) == false)
+	{
+    	printf("Error receiving URC\r\n");
+	}
+    else
+    {
+        retval = true;
+    }
+    return (retval);
+}
      
 bool comm_module_driver_send_atcmd_seq(char *atcmd_seq[])
 {

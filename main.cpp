@@ -17,6 +17,7 @@ Thread comm_thread;
 #define SLEEP_TIME                  500 // (msec)
 #define PRINT_AFTER_N_LOOPS         20
 
+#if !MBED_TEST_MODE
 // main() runs in its own thread in the OS
 int main()
 {
@@ -42,3 +43,4 @@ int main()
 #endif        
     }
 }
+#endif

@@ -25,7 +25,7 @@
 
 #define LED_PERIOD_IN_SECONDS (20)  
 
-#define MODULE_FW_VERSION "BC66NBR01A07_TWJH_BETA0321"  
+#define MODULE_FW_VERSION "BC66NBR01A07_TWJH_BETA0328"
 
 #define LWM2M_SERVER_URL        "www.testmyquectel.net"
 #define LWM2M_SERVER_PORT       5683   
