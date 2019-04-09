@@ -25,10 +25,23 @@ InterruptIn user_button(USER_BUTTON);
 DigitalOut led_key(LED3);
 DigitalOut led_periodic(LED2);
 DigitalOut led_state(LED1);
-DigitalOut pwrkey_n(A1);
+DigitalOut pwrkey_n(D12);
+DigitalOut reset_n(D13);
+DigitalOut power_en(A0);
 
 /* OS resources */
 EventQueue io_queue(32 * EVENTS_EVENT_SIZE);
+
+
+void toggle_pin(DigitalOut pin)
+{
+    pin = !pin;
+}
+
+void set_output_to_low(DigitalOut pin)
+{
+	pin = 0;
+}
 
 void notify_update(message_notification_type_t action, message_signal_name_t signal, int value)
 {
@@ -40,11 +53,6 @@ void notify_update(message_notification_type_t action, message_signal_name_t sig
         mail->value = value;
         system_mailbox.put(mail);
     }
-}
-
-void reset_pwrkey(void) 
-{
-    pwrkey_n = 0;    
 }
 
 void button_confirm_debounce(void)
@@ -71,14 +79,12 @@ void toggle_led_periodic(void)
     io_queue.call(notify_update, MSG_UPDATE_VALUE, MSG_DIGITAL_OUTPUT, led_periodic.read());
 }  
 
-void toggle_led_state(void) 
-{
-    led_state = !led_state;
-}  
+
 
 void io_module_init(Thread *io_queue_thread)
 {
-    reset_pwrkey();
+    pwrkey_n = 0;
+    reset_n = 0;
     
     io_queue.call_every(LED_PERIOD_IN_SECONDS*1000, toggle_led_periodic);
     user_button.rise(io_queue.event(button_begin_debounce));
@@ -92,13 +98,19 @@ void io_module_init(Thread *io_queue_thread)
 void io_module_turn_on_modem(void) 
 {
     pwrkey_n = 1;
-    io_queue.call_in(PWRKEY_TIME_IN_MS,reset_pwrkey);
+    io_queue.call_in(PWRKEY_TIME_IN_MS,set_output_to_low,pwrkey_n);
 }
 
 
+void io_module_reset_modem(void)
+{
+    reset_n = 1;
+    io_queue.call_in(RESET_TIME_IN_MS,set_output_to_low,reset_n);
+}
+
 int io_module_set_fast_state_pattern(void) 
 {
-    return io_queue.call_every(FAST_PATTERN_TIME_IN_MS, toggle_led_state);    
+    return io_queue.call_every(FAST_PATTERN_TIME_IN_MS, toggle_pin, led_state);
 }
 
 void io_module_cancel_state_pattern(int id) 

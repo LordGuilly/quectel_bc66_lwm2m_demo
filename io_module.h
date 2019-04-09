@@ -22,10 +22,12 @@
 
 #define DEBOUNCE_TIME_IN_MS (100)  
 #define PWRKEY_TIME_IN_MS (500)  
+#define RESET_TIME_IN_MS (500)
 
 void io_module_init(Thread *io_queue_thread);
 
 void io_module_turn_on_modem(void);
+void io_module_reset_modem(void);
 
 int io_module_set_fast_state_pattern(void);
 void io_module_cancel_state_pattern(int id);

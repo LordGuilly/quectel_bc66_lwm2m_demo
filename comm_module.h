@@ -42,7 +42,7 @@ typedef enum {
 void comm_manager_task(void);
 
 void comm_module_driver_init(void);
-bool comm_module_driver_send_atcmd_seq(char *atcmd_seq[]);
+bool comm_module_driver_send_atcmd_seq(const char *atcmd_seq[]);
 bool comm_module_driver_send_atcmd_atomic(const char* atcmd);
 bool comm_module_driver_send_atcmd_and_waitfor_urc(const char *atcmd, const char *urc);
 bool comm_module_driver_get_module_version(char* version);

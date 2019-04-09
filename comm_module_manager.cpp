@@ -56,7 +56,7 @@ Lwm2mObject object_table[MSG_LAST_SIGNAL] = {
         },
 };
 
-char *atcmd_init_seq[] = { 
+const char *atcmd_init_seq[] = {
             "AT",
 			"ATE0",
             "AT+QCGDEFCONT=\"IP\"," xstr(NBIOT_SERVICE_PROVIDER_APN),
@@ -68,7 +68,7 @@ char *atcmd_init_seq[] = {
             };
 
 
-char *atcmd_lwm2m_setup_seq[] = { 
+const char *atcmd_lwm2m_setup_seq[] = {
             "at+qlwconfig=0," xstr(LWM2M_SERVER_URL) "," \
                               xstr(LWM2M_SERVER_PORT) "," \
                               xstr(LWM2M_DEVICE_IDENTIFIER) "," \
@@ -226,10 +226,12 @@ void comm_manager_init_modem(void)
 {
     
     char modem_version[MAX_BUF];
-    /* not working yet :-(
+
+    /* generate pwrkey pulse, and then reset the modem to clear anything going */
     io_module_turn_on_modem();
-    wait(5);
-    */
+    wait(3);
+    io_module_reset_modem();
+
     if (comm_module_driver_send_atcmd_seq(atcmd_init_seq) == false)
     {
         printf("\r\n atcmd_init_seq FAILED\r\n");     

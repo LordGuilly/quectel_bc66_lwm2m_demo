@@ -95,7 +95,7 @@ bool comm_module_driver_send_atcmd_and_waitfor_urc(const char *atcmd, const char
     return (retval);
 }
      
-bool comm_module_driver_send_atcmd_seq(char *atcmd_seq[])
+bool comm_module_driver_send_atcmd_seq(const char *atcmd_seq[])
 {
     int index = 0;
     
