@@ -50,4 +50,6 @@ void comm_module_driver_check_for_urcs(void);
 void comm_module_driver_register_oob(const char *prefix, Callback<void()> cb);
 char comm_module_driver_read_value(void);
 bool comm_module_driver_parse_urc(const char *response, ...);
+bool comm_module_driver_waitfor(const char *string);
+void comm_module_driver_set_timeout(int timeout);
 #endif /* _COMM_MANAGER_MODULE_HEADER__ */

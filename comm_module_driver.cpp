@@ -94,6 +94,22 @@ bool comm_module_driver_send_atcmd_and_waitfor_urc(const char *atcmd, const char
     }
     return (retval);
 }
+
+
+bool comm_module_driver_waitfor(const char *string)
+{
+    bool retval = false;
+
+    if (_parser->recv(string) == false)
+	{
+    	printf("Error receiving string\r\n");
+	}
+    else
+    {
+        retval = true;
+    }
+    return (retval);
+}
      
 bool comm_module_driver_send_atcmd_seq(const char *atcmd_seq[])
 {
@@ -132,4 +148,10 @@ bool comm_module_driver_parse_urc(const char *response, ...)
     bool res = _parser->vrecv(response, args);
     va_end(args);
     return res;
+}
+
+
+void comm_module_driver_set_timeout(int timeout)
+{
+	_parser->set_timeout(timeout);
 }

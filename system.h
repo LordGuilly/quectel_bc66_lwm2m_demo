@@ -25,15 +25,15 @@
 
 #define LED_PERIOD_IN_SECONDS (10)
 
-#define MODULE_FW_VERSION "BC66NBR01A07_TWJH_BETA0328"
+#define MODULE_FW_VERSION "BC66NBR01A07"
 
 #define LWM2M_SERVER_URL        "www.testmyquectel.net"
 #define LWM2M_SERVER_PORT       5683   
 #define LWM2M_DEVICE_IDENTIFIER "LWM2M-Demo-STM32_BC66"
 #define LWM2M_DEVICE_LIFETIME   3600
 
-#define NBIOT_SERVICE_PROVIDER_APN    "vdf"
-#define NBIOT_BAND      8
+#define NBIOT_SERVICE_PROVIDER_APN    "openlab.vodafone.iot"
+#define NBIOT_BAND      20
 
 #ifdef MOCK_MODEM_DEBUG
 #define MODEM_TX_PIN    (USBTX)

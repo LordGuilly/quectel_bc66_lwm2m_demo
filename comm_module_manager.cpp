@@ -26,12 +26,17 @@
 
 
 
-#define REGISTRATION_URC    "+QLWURC:reg,"
-#define DEREGISTRATION_URC  "+QLWURC:dereg,"
+#define REGISTRATION_URC    "+QLWREG: "
+#define DEREGISTRATION_URC  "+QLWDEREG: "
 #define SERVER_OBSERVE_ACTION_URC   "+QLWURC: 0,"
-#define SERVER_READ_ACTION_URC      "+QLWURC: 1,"
+#define SERVER_READ_ACTION_URC      "+QLWURC: \"read\","
 #define SERVER_WRITE_ACTION_URC     "+QLWURC: 2,"
 
+#define NBIOT_NETWORK_IP	"+IP "
+#define BOOTLOADER_END_BANNER "Leaving the BROM"
+#define MODULE_STARTUP_END_BANNER "+CPIN: READY"
+
+#define DEFAULT_COMM_TIMEOUT	(8000)
 
 #define COMM_MANAGER_MAILBOX_BLOCK_IN_MS (1000)
 
@@ -57,13 +62,14 @@ Lwm2mObject object_table[MSG_LAST_SIGNAL] = {
 };
 
 const char *atcmd_init_seq[] = {
-            "AT",
+            "AT+CFUN=0",
 			"ATE0",
-            "AT+QCGDEFCONT=\"IP\"," xstr(NBIOT_SERVICE_PROVIDER_APN),
-            "AT+CPSMS=0",
             "AT+QSCLK=0",
+			"AT+CPSMS=0",
             "AT+QNBIOTEVENT=1,1",
-            "AT+QBAND=1," xstr(NBIOT_BAND),
+            "AT+QCGDEFCONT=\"IP\"," xstr(NBIOT_SERVICE_PROVIDER_APN),
+			"AT+CFUN=1",
+			"AT+QBAND=1," xstr(NBIOT_BAND),
             NULL 
             };
 
@@ -73,7 +79,7 @@ const char *atcmd_lwm2m_setup_seq[] = {
                               xstr(LWM2M_SERVER_PORT) "," \
                               xstr(LWM2M_DEVICE_IDENTIFIER) "," \
                               xstr(LWM2M_DEVICE_LIFETIME) ",3",
-			"at+qlwreg",
+			//"at+qlwreg",
             NULL 
             };
 
@@ -221,7 +227,22 @@ void parse_callback(void)
         */
     }
 }
-        
+/*
+void parse_nbiot_ip(void)
+{
+	int octet1, octet2, octet3, octet4;
+
+	if (comm_module_driver_parse_urc("%d.%d.%d.%d%\r\n", &octet1, &octet2, &octet3, &octet4) == true)
+	{
+		mail_t *mail = system_mailbox.alloc();
+		mail->action = MSG_UPDATE_NETWORK;
+		mail->signal = (message_signal_name_t)0;
+		mail->value = 1;
+		mail->data = NULL;
+		system_mailbox.put(mail);
+	}
+}
+  */
 void comm_manager_init_modem(void)
 {
     
@@ -231,6 +252,23 @@ void comm_manager_init_modem(void)
     io_module_turn_on_modem();
     wait(3);
     io_module_reset_modem();
+
+    if (comm_module_driver_waitfor(BOOTLOADER_END_BANNER) == false)
+	{
+	  printf("\r\n BOOTLOADER_END_BANNER FAILED\r\n");
+	  exit(1);
+	}
+
+    if (comm_module_driver_waitfor(MODULE_STARTUP_END_BANNER) == false)
+	{
+	  printf("\r\n MODULE_STARTUP_END_BANNER FAILED\r\n");
+	  exit(1);
+	}
+
+    comm_module_driver_set_timeout(DEFAULT_COMM_TIMEOUT);
+    /* workaround, the first one sometimes fails for no reason */
+    comm_module_driver_send_atcmd_atomic("AT");
+    comm_module_driver_send_atcmd_atomic("AT");
 
     if (comm_module_driver_send_atcmd_seq(atcmd_init_seq) == false)
     {
@@ -359,6 +397,7 @@ void comm_manager_task(void)
     comm_module_driver_register_oob(SERVER_OBSERVE_ACTION_URC, callback(observe_callback));
     comm_module_driver_register_oob(SERVER_READ_ACTION_URC, callback(read_callback));
     comm_module_driver_register_oob(SERVER_WRITE_ACTION_URC, callback(write_callback));
+    /*comm_module_driver_register_oob(NBIOT_NETWORK_IP, callback(parse_nbiot_ip));*/
     
     
     comm_manager_init_modem();
@@ -373,6 +412,12 @@ void comm_manager_task(void)
             
             switch (mail->action) 
             {
+/*
+            	case MSG_UPDATE_NETWORK:
+            		printf("module_state[%d]\r\n", module_state);
+            		comm_module_driver_send_atcmd_atomic("AT+QLWREG");
+            		break;
+            		*/
                 case MSG_UPDATE_VALUE:
                     /* store the value in the cache, for future use */
                     object_table[mail->signal].value = mail->value;
