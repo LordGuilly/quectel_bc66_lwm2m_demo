@@ -155,3 +155,8 @@ void comm_module_driver_set_timeout(int timeout)
 {
 	_parser->set_timeout(timeout);
 }
+
+void comm_module_driver_flush(void)
+{
+	_parser->flush();
+}

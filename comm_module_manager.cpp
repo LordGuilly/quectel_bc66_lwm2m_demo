@@ -28,11 +28,12 @@
 
 #define REGISTRATION_URC    "+QLWREG: "
 #define DEREGISTRATION_URC  "+QLWDEREG: "
-#define SERVER_OBSERVE_ACTION_URC   "+QLWURC: 0,"
+#define SERVER_OBSERVE_ACTION_URC   "+QLWURC: \"observe\","
 #define SERVER_READ_ACTION_URC      "+QLWURC: \"read\","
 #define SERVER_WRITE_ACTION_URC     "+QLWURC: 2,"
+#define SERVER_PING_URC     "+QLWURC: \"ping\","
 
-#define NBIOT_NETWORK_IP	"+IP "
+#define NBIOT_NETWORK_IP	"+IP: "
 #define BOOTLOADER_END_BANNER "Leaving the BROM"
 #define MODULE_STARTUP_END_BANNER "+CPIN: READY"
 
@@ -227,22 +228,30 @@ void parse_callback(void)
         */
     }
 }
-/*
+
 void parse_nbiot_ip(void)
 {
-	int octet1, octet2, octet3, octet4;
+	comm_module_driver_flush();
 
-	if (comm_module_driver_parse_urc("%d.%d.%d.%d%\r\n", &octet1, &octet2, &octet3, &octet4) == true)
-	{
-		mail_t *mail = system_mailbox.alloc();
-		mail->action = MSG_UPDATE_NETWORK;
-		mail->signal = (message_signal_name_t)0;
-		mail->value = 1;
-		mail->data = NULL;
-		system_mailbox.put(mail);
-	}
+	mail_t *mail = system_mailbox.alloc();
+	mail->action = MSG_UPDATE_NETWORK;
+	mail->signal = (message_signal_name_t)0;
+	mail->value = 1;
+	mail->data = NULL;
+	system_mailbox.put(mail);
 }
-  */
+
+void parse_ping_urc(void)
+{
+	comm_module_driver_read_value();
+}
+
+void ignore_urc(void)
+{
+	printf("\r\n ignore_urc\r\n");
+	comm_module_driver_flush();
+}
+
 void comm_manager_init_modem(void)
 {
     
@@ -297,14 +306,17 @@ bool comm_manager_add_custom_objects(void)
 
 	/* delete both objects, don't care about errors, as they may not exist */
 	comm_module_driver_send_atcmd_and_waitfor_urc("at+qlwdelobj=3200", "+QLWDELOBJ :");
-	comm_module_driver_send_atcmd_and_waitfor_urc("at+qlwdelobj=3201", "+QLWDELOBJ :");
+	comm_module_driver_flush();
 
-	if (comm_module_driver_send_atcmd_and_waitfor_urc("at+qlwaddobj=3200,1,1,\"5500\"", "+QLWADDOBJ :0") == false)
+	comm_module_driver_send_atcmd_and_waitfor_urc("at+qlwdelobj=3201", "+QLWDELOBJ :");
+	comm_module_driver_flush();
+
+	if (comm_module_driver_send_atcmd_and_waitfor_urc("at+qlwaddobj=3200,1,1,\"5500\"", "+QLWADDOBJ: 0") == false)
 	{
 		retval = false;
 	}
 
-	if (comm_module_driver_send_atcmd_and_waitfor_urc("at+qlwaddobj=3201,1,1,\"5550\"", "+QLWADDOBJ :0") == false)
+	if (comm_module_driver_send_atcmd_and_waitfor_urc("at+qlwaddobj=3201,1,1,\"5550\"", "+QLWADDOBJ: 0") == false)
 	{
 		retval = false;
 	}
@@ -345,7 +357,7 @@ void comm_module_manager_reply_request(message_notification_type_t request, Lwm2
     printf("flag[%d]\r\n", obj->flag);
     printf("object_id[%d]\r\n", obj->object_id);
     printf("instance_id[%d]\r\n", obj->instance_id);
-    printf("resource_id%d]\r\n", obj->resource_id);
+    printf("resource_id[%d]\r\n", obj->resource_id);
     /* send response at command */
     
     switch(request)
@@ -397,7 +409,8 @@ void comm_manager_task(void)
     comm_module_driver_register_oob(SERVER_OBSERVE_ACTION_URC, callback(observe_callback));
     comm_module_driver_register_oob(SERVER_READ_ACTION_URC, callback(read_callback));
     comm_module_driver_register_oob(SERVER_WRITE_ACTION_URC, callback(write_callback));
-    /*comm_module_driver_register_oob(NBIOT_NETWORK_IP, callback(parse_nbiot_ip));*/
+    comm_module_driver_register_oob(NBIOT_NETWORK_IP, callback(parse_nbiot_ip));
+    comm_module_driver_register_oob(SERVER_PING_URC, callback(parse_ping_urc));
     
     
     comm_manager_init_modem();
@@ -412,12 +425,13 @@ void comm_manager_task(void)
             
             switch (mail->action) 
             {
-/*
+
             	case MSG_UPDATE_NETWORK:
             		printf("module_state[%d]\r\n", module_state);
+            		printf("Registered into NBIoT network\r\n");
             		comm_module_driver_send_atcmd_atomic("AT+QLWREG");
             		break;
-            		*/
+
                 case MSG_UPDATE_VALUE:
                     /* store the value in the cache, for future use */
                     object_table[mail->signal].value = mail->value;
