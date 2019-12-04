@@ -30,8 +30,9 @@
 #define DEREGISTRATION_URC  "+QLWDEREG: "
 #define SERVER_OBSERVE_ACTION_URC   "+QLWURC: \"observe\","
 #define SERVER_READ_ACTION_URC      "+QLWURC: \"read\","
-#define SERVER_WRITE_ACTION_URC     "+QLWURC: 2,"
+#define SERVER_WRITE_ACTION_URC     "+QLWURC: \"write\","
 #define SERVER_PING_URC     "+QLWURC: \"ping\","
+#define SERVER_NOTIFY_URC     "+QLWNOTIFY: "
 
 #define NBIOT_NETWORK_IP	"+IP: "
 #define BOOTLOADER_END_BANNER "Leaving the BROM"
@@ -152,7 +153,7 @@ void write_callback(void)
         printf("value[%d]\r\n",obj->value);
         printf("object_id[%d]\r\n",obj->object_id);
         printf("instance_id[%d]\r\n",obj->instance_id);
-        printf("resource_id%d]\r\n",obj->resource_id);
+        printf("resource_id[%d]\r\n",obj->resource_id);
         
         mail_t *mail = system_mailbox.alloc();
         mail->action = MSG_WRITE_REQUEST;
@@ -331,10 +332,10 @@ void comm_manager_notify_server(message_signal_name_t signal, int value)
     switch(signal)
     {   
         case MSG_DIGITAL_INPUT:
-            snprintf(atcmd_buf, MAX_BUF, "at+qlwnotify=3200,1,5500,5,1,%d", value);
+            snprintf(atcmd_buf, MAX_BUF, "at+qlwnotify=3200,1,5500,5,1,%d,0", value);
             break;
         case MSG_DIGITAL_OUTPUT:
-            snprintf(atcmd_buf, MAX_BUF, "at+qlwnotify=3201,1,5550,5,1,%d", value);
+            snprintf(atcmd_buf, MAX_BUF, "at+qlwnotify=3201,1,5550,5,1,%d,0", value);
             break;
         default:
             break;
@@ -343,7 +344,7 @@ void comm_manager_notify_server(message_signal_name_t signal, int value)
     if (atcmd_buf != NULL)
     {
      //   comm_module_driver_send_atcmd_atomic(atcmd_buf);
-    	comm_module_driver_send_atcmd_and_waitfor_urc(atcmd_buf, "+QLWURC: 4,");
+    	comm_module_driver_send_atcmd_and_waitfor_urc(atcmd_buf, SERVER_NOTIFY_URC);
     }
 } 
 void comm_module_manager_reply_request(message_notification_type_t request, Lwm2mObject *obj)
