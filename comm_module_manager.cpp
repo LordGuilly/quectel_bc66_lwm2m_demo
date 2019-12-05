@@ -305,24 +305,30 @@ void comm_manager_init_modem(void)
 bool comm_manager_add_custom_objects(void)
 {
 	bool retval = true;
-
+	char buf[MAX_BUF] = { 0 };
+	int index;
 	/* delete objects, don't care about errors, as they may not exist */
-
-	comm_module_driver_send_atcmd_and_waitfor_urc("at+qlwdelobj=3200", "+QLWDELOBJ :");
-	comm_module_driver_flush();
-
-	comm_module_driver_send_atcmd_and_waitfor_urc("at+qlwdelobj=3201", "+QLWDELOBJ :");
-	comm_module_driver_flush();
-
-	if (comm_module_driver_send_atcmd_and_waitfor_urc("at+qlwaddobj=3200,1,1,\"5500\"", "+QLWADDOBJ: 0") == false)
+	for (index = 0; index < MSG_LAST_SIGNAL ; index++)
 	{
+		memset(buf, 0, MAX_BUF);
+		snprintf(buf, MAX_BUF, "at+qlwdelobj=%d", object_table[index].object_id);
+		APP_LOG("Sending[%s]\r\n", buf);
+		comm_module_driver_send_atcmd_and_waitfor_urc(buf, "+QLWDELOBJ :");
+		comm_module_driver_flush();
+	}
+
+	/* add the objects */
+	for (index = 0; index < MSG_LAST_SIGNAL ; index++)
+	{
+		memset(buf, 0, MAX_BUF);
+		snprintf(buf, MAX_BUF, "at+qlwaddobj=%d,%d,1,\"%d\"", object_table[index].object_id,
+							object_table[index].instance_id, object_table[index].resource_id);
+		APP_LOG("Sending[%s]\r\n", buf);
+		comm_module_driver_send_atcmd_and_waitfor_urc(buf, "+QLWADDOBJ: 0");
+		comm_module_driver_flush();
 		retval = false;
 	}
 
-	if (comm_module_driver_send_atcmd_and_waitfor_urc("at+qlwaddobj=3201,1,1,\"5550\"", "+QLWADDOBJ: 0") == false)
-	{
-		retval = false;
-	}
 	return retval;
 }
 void comm_manager_notify_server(message_signal_name_t signal, int value)
