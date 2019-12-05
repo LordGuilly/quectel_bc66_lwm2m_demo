@@ -25,6 +25,7 @@
 #include "io_module.h"
 
 
+#define APP_LOG	printf
 
 #define REGISTRATION_URC    "+QLWREG: "
 #define DEREGISTRATION_URC  "+QLWDEREG: "
@@ -116,7 +117,7 @@ void registration_callback(void)
     }
     else
     {
-        printf("Ignoring registration report\r\n");    
+    	APP_LOG("Ignoring registration report\r\n");
     }
 }
      
@@ -135,7 +136,7 @@ void deregistration_callback(void)
     }
     else
     {
-        printf("Ignoring deregistration report\r\n");    
+    	APP_LOG("Ignoring deregistration report\r\n");
     }
 }
 
@@ -148,12 +149,12 @@ void write_callback(void)
                                      &obj->object_id, &obj->instance_id,
                                      &obj->resource_id) == true)
     {
-        printf("WRITE REQUEST:\r\n");
-        printf("message_id[%d]\r\n",obj->message_id);
-        printf("value[%d]\r\n",obj->value);
-        printf("object_id[%d]\r\n",obj->object_id);
-        printf("instance_id[%d]\r\n",obj->instance_id);
-        printf("resource_id[%d]\r\n",obj->resource_id);
+    	APP_LOG("WRITE REQUEST:\r\n");
+    	APP_LOG("message_id[%d]\r\n",obj->message_id);
+    	APP_LOG("value[%d]\r\n",obj->value);
+    	APP_LOG("object_id[%d]\r\n",obj->object_id);
+    	APP_LOG("instance_id[%d]\r\n",obj->instance_id);
+    	APP_LOG("resource_id[%d]\r\n",obj->resource_id);
         
         mail_t *mail = system_mailbox.alloc();
         mail->action = MSG_WRITE_REQUEST;
@@ -173,11 +174,11 @@ void read_callback(void)
                                      &obj->object_id, &obj->instance_id,
                                      &obj->resource_id) == true)
     {
-        printf("READ REQUEST:\r\n");
-        printf("message_id[%d]\r\n",obj->message_id);
-        printf("object_id[%d]\r\n",obj->object_id);
-        printf("instance_id[%d]\r\n",obj->instance_id);
-        printf("resource_id%d]\r\n",obj->resource_id);
+    	APP_LOG("READ REQUEST:\r\n");
+    	APP_LOG("message_id[%d]\r\n",obj->message_id);
+    	APP_LOG("object_id[%d]\r\n",obj->object_id);
+    	APP_LOG("instance_id[%d]\r\n",obj->instance_id);
+    	APP_LOG("resource_id%d]\r\n",obj->resource_id);
         
         mail_t *mail = system_mailbox.alloc();
         mail->action = MSG_READ_REQUEST;
@@ -195,12 +196,12 @@ void observe_callback(void)
                                      &obj->flag, &obj->object_id, &obj->instance_id,
                                      &obj->resource_id) == true)
     {
-        printf("OBSERVE REQUEST:\r\n");
-        printf("message_id[%d]\r\n",obj->message_id);
-        printf("flag[%d]\r\n",obj->flag);
-        printf("object_id[%d]\r\n",obj->object_id);
-        printf("instance_id[%d]\r\n",obj->instance_id);
-        printf("resource_id%d]\r\n",obj->resource_id);
+    	APP_LOG("OBSERVE REQUEST:\r\n");
+    	APP_LOG("message_id[%d]\r\n",obj->message_id);
+    	APP_LOG("flag[%d]\r\n",obj->flag);
+        APP_LOG("object_id[%d]\r\n",obj->object_id);
+        APP_LOG("instance_id[%d]\r\n",obj->instance_id);
+        APP_LOG("resource_id%d]\r\n",obj->resource_id);
         
         mail_t *mail = system_mailbox.alloc();
         mail->action = MSG_OBSERVE_REQUEST;
@@ -219,7 +220,7 @@ void parse_callback(void)
     
     if (comm_module_driver_parse_urc("%d,%d\r\n", &objid,&resid) == true)
     {
-        printf("objid[%d]\r\nresid[%d]\r\n",objid,resid);
+        APP_LOG("objid[%d]\r\nresid[%d]\r\n",objid,resid);
         /*
         mail_t *mail = system_mailbox.alloc();
         mail->action = MSG_UPDATE_REGISTRATION;
@@ -249,7 +250,7 @@ void parse_ping_urc(void)
 
 void ignore_urc(void)
 {
-	printf("\r\n ignore_urc\r\n");
+	APP_LOG("\r\n ignore_urc\r\n");
 	comm_module_driver_flush();
 }
 
@@ -265,13 +266,13 @@ void comm_manager_init_modem(void)
 
     if (comm_module_driver_waitfor(BOOTLOADER_END_BANNER) == false)
 	{
-	  printf("\r\n BOOTLOADER_END_BANNER FAILED\r\n");
+	  APP_LOG("\r\n BOOTLOADER_END_BANNER FAILED\r\n");
 	  exit(1);
 	}
 
     if (comm_module_driver_waitfor(MODULE_STARTUP_END_BANNER) == false)
 	{
-	  printf("\r\n MODULE_STARTUP_END_BANNER FAILED\r\n");
+	  APP_LOG("\r\n MODULE_STARTUP_END_BANNER FAILED\r\n");
 	  exit(1);
 	}
 
@@ -282,20 +283,20 @@ void comm_manager_init_modem(void)
 
     if (comm_module_driver_send_atcmd_seq(atcmd_init_seq) == false)
     {
-        printf("\r\n atcmd_init_seq FAILED\r\n");     
+        APP_LOG("\r\n atcmd_init_seq FAILED\r\n");
         exit(1);
     }
  
     if ((comm_module_driver_get_module_version(modem_version) == true) &&
         (strncmp(modem_version, MODULE_FW_VERSION, MAX_BUF) != 0))
     {
-        printf("\r\n WRONG modemversion, got[%s], expected[%s]\r\n", modem_version, MODULE_FW_VERSION);        
+        APP_LOG("\r\n WRONG modemversion, got[%s], expected[%s]\r\n", modem_version, MODULE_FW_VERSION);
         exit(1);
     }
 
     if (comm_module_driver_send_atcmd_seq(atcmd_lwm2m_setup_seq) == false)
     {
-        printf("\r\n atcmd_lwm2m_setup_seq FAILED\r\n");     
+        APP_LOG("\r\n atcmd_lwm2m_setup_seq FAILED\r\n");
         exit(1);
     }
 
@@ -305,7 +306,8 @@ bool comm_manager_add_custom_objects(void)
 {
 	bool retval = true;
 
-	/* delete both objects, don't care about errors, as they may not exist */
+	/* delete objects, don't care about errors, as they may not exist */
+
 	comm_module_driver_send_atcmd_and_waitfor_urc("at+qlwdelobj=3200", "+QLWDELOBJ :");
 	comm_module_driver_flush();
 
@@ -327,7 +329,7 @@ void comm_manager_notify_server(message_signal_name_t signal, int value)
 {
     char atcmd_buf[MAX_BUF] = { 0 };
     
-    printf("should notify type(%d), value (%d)\r\n", signal, value);
+    APP_LOG("should notify type(%d), value (%d)\r\n", signal, value);
     
     switch(signal)
     {   
@@ -353,12 +355,12 @@ void comm_module_manager_reply_request(message_notification_type_t request, Lwm2
     message_signal_name_t signal = map_object_to_signal(obj);
 	/* search in object_table looking for obj/ins/res match */
 
-    printf("request [%d]\r\n", request);
-    printf("message_id[%d]\r\n", obj->message_id);
-    printf("flag[%d]\r\n", obj->flag);
-    printf("object_id[%d]\r\n", obj->object_id);
-    printf("instance_id[%d]\r\n", obj->instance_id);
-    printf("resource_id[%d]\r\n", obj->resource_id);
+    APP_LOG("request [%d]\r\n", request);
+    APP_LOG("message_id[%d]\r\n", obj->message_id);
+    APP_LOG("flag[%d]\r\n", obj->flag);
+    APP_LOG("object_id[%d]\r\n", obj->object_id);
+    APP_LOG("instance_id[%d]\r\n", obj->instance_id);
+    APP_LOG("resource_id[%d]\r\n", obj->resource_id);
     /* send response at command */
     
     switch(request)
@@ -386,12 +388,12 @@ void comm_module_manager_reply_request(message_notification_type_t request, Lwm2
             snprintf(buf, MAX_BUF, "AT+QLWWRRSP=%d,12", obj->message_id);
             break;
         default:
-            printf("REQUEST [%d] not supported\r\n", request);
+            APP_LOG("REQUEST [%d] not supported\r\n", request);
             exit(1);
     }
     if (comm_module_driver_send_atcmd_atomic(buf) == false)
     {
-        printf("\r\n sending [%s] FAILED\r\n", buf);     
+        APP_LOG("\r\n sending [%s] FAILED\r\n", buf);
         exit(1);
     }
 }
@@ -428,8 +430,8 @@ void comm_manager_task(void)
             {
 
             	case MSG_UPDATE_NETWORK:
-            		printf("module_state[%d]\r\n", module_state);
-            		printf("Registered into NBIoT network\r\n");
+            		APP_LOG("module_state[%d]\r\n", module_state);
+            		APP_LOG("Registered into NBIoT network\r\n");
             		comm_module_driver_send_atcmd_atomic("AT+QLWREG");
             		break;
 
@@ -445,12 +447,12 @@ void comm_manager_task(void)
                     	}
                     	else
                     	{
-                    		printf("Object[%d] is not observed\r\n",object_table[mail->signal].object_id);
+                    		APP_LOG("Object[%d] is not observed\r\n",object_table[mail->signal].object_id);
                     	}
                     }
                     break;
                 case MSG_UPDATE_REGISTRATION:
-                    printf("registration value[%d]\r\n", mail->value);
+                    APP_LOG("registration value[%d]\r\n", mail->value);
                     if (mail->value == 1)
                     {
                     	module_state = MODULE_REGISTERED;
@@ -459,7 +461,7 @@ void comm_manager_task(void)
                     {
                     	module_state = MODULE_CONFIGURED;
                     }
-                    printf("module_state[%d]\r\n", module_state);
+                    APP_LOG("module_state[%d]\r\n", module_state);
                     break;
                 case MSG_OBSERVE_REQUEST:                    
                 case MSG_READ_REQUEST:      
@@ -468,7 +470,7 @@ void comm_manager_task(void)
                     	delete ((Lwm2mObject*) mail->data);
                     break;
                 default:
-                    printf("action [%d] not supported yet\r\n", mail->action);
+                    APP_LOG("action [%d] not supported yet\r\n", mail->action);
                     break;
             }
             system_mailbox.free(mail);
