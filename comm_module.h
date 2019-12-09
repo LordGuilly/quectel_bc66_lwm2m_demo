@@ -22,6 +22,12 @@
 
 #define MAX_BUF (256)
 
+typedef enum {
+	MODULE_RESET,
+	MODULE_REGISTERED,
+	MODULE_CONFIGURED,
+} module_state_t;
+
 class Lwm2mObject {
     public:
         int message_id;
@@ -30,14 +36,9 @@ class Lwm2mObject {
         int instance_id;
         int resource_id;
         int value;
+        int signal;
         bool observed;
 }; 
-
-typedef enum {
-	MODULE_RESET,
-	MODULE_REGISTERED,
-	MODULE_CONFIGURED,
-} module_state_t;
 
 void comm_manager_task(void);
 

@@ -35,7 +35,7 @@ typedef enum {
 /* Mail */
 typedef struct {
   message_notification_type_t   action; 
-  message_signal_name_t         signal;
+  int signal;
   int value;
   void *data;
 } mail_t;

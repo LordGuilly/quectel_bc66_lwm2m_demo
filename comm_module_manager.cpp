@@ -51,6 +51,7 @@ Lwm2mObject object_table[MSG_LAST_SIGNAL] = {
         .instance_id = 1,
         .resource_id = 5500,
         .value = 0,
+		.signal = (int)MSG_DIGITAL_INPUT,
 		.observed = false,
         },
     /* DIGITAL_OUTPUT */
@@ -60,6 +61,7 @@ Lwm2mObject object_table[MSG_LAST_SIGNAL] = {
         .instance_id = 1,
         .resource_id = 5550,
         .value = 0,
+		.signal = (int)MSG_DIGITAL_OUTPUT,
 		.observed = false,
         },
 };
@@ -86,8 +88,11 @@ const char *atcmd_lwm2m_setup_seq[] = {
             NULL 
             };
 
-
-message_signal_name_t map_object_to_signal(Lwm2mObject *obj)
+/*
+ * TODO: these functions should return NULL if not found, and the callers
+ * should process accordingly
+ */
+Lwm2mObject* map_object_to_cache_table(Lwm2mObject *obj)
 {
     int index = 0;
     
@@ -100,9 +105,23 @@ message_signal_name_t map_object_to_signal(Lwm2mObject *obj)
             break;        
         }
     }           
-    return (message_signal_name_t)index;
+    return &object_table[index];
 }
-           
+
+Lwm2mObject* map_signal_to_cache_table(int signal)
+{
+    int index = 0;
+
+    for (index = 0; index < MSG_LAST_SIGNAL; index++)
+    {
+        if (object_table[index].signal == (int) signal)
+        {
+            break;
+        }
+    }
+    return &object_table[index];
+}
+
 void registration_callback(void)
 {
     /* 0 is the success status code, only report if was successful */
@@ -331,19 +350,19 @@ bool comm_manager_add_custom_objects(void)
 
 	return retval;
 }
-void comm_manager_notify_server(message_signal_name_t signal, int value)
+void comm_manager_notify_server(Lwm2mObject *obj)
 {
     char atcmd_buf[MAX_BUF] = { 0 };
     
-    APP_LOG("should notify type(%d), value (%d)\r\n", signal, value);
+    APP_LOG("should notify type(%d), value (%d)\r\n", obj->signal, obj->value);
     
-    switch(signal)
+    switch(obj->signal)
     {   
         case MSG_DIGITAL_INPUT:
-            snprintf(atcmd_buf, MAX_BUF, "at+qlwnotify=3200,1,5500,5,1,%d,0", value);
+            snprintf(atcmd_buf, MAX_BUF, "at+qlwnotify=3200,1,5500,5,1,%d,0", obj->value);
             break;
         case MSG_DIGITAL_OUTPUT:
-            snprintf(atcmd_buf, MAX_BUF, "at+qlwnotify=3201,1,5550,5,1,%d,0", value);
+            snprintf(atcmd_buf, MAX_BUF, "at+qlwnotify=3201,1,5550,5,1,%d,0", obj->value);
             break;
         default:
             break;
@@ -358,8 +377,10 @@ void comm_manager_notify_server(message_signal_name_t signal, int value)
 void comm_module_manager_reply_request(message_notification_type_t request, Lwm2mObject *obj)
 {
     char buf[MAX_BUF] = { 0 };
-    message_signal_name_t signal = map_object_to_signal(obj);
-	/* search in object_table looking for obj/ins/res match */
+
+    /* search in object_table looking for obj/ins/res match */
+    /* TODO: parse NULL return */
+    Lwm2mObject *cache_obj = map_object_to_cache_table(obj);
 
     APP_LOG("request [%d]\r\n", request);
     APP_LOG("message_id[%d]\r\n", obj->message_id);
@@ -373,21 +394,21 @@ void comm_module_manager_reply_request(message_notification_type_t request, Lwm2
     {
         case MSG_OBSERVE_REQUEST:
             /* accept all the observes*/
-            snprintf(buf, MAX_BUF, "AT+QLWOBSRSP=%d,1,%d,%d,%d,5,1,%d,0", obj->message_id,
-                        obj->object_id, obj->instance_id, obj->resource_id, object_table[signal].value);
+            snprintf(buf, MAX_BUF, "AT+QLWOBSRSP=%d,1,%d,%d,%d,5,1,%d,0", cache_obj->message_id,
+            		cache_obj->object_id, cache_obj->instance_id, cache_obj->resource_id, cache_obj->value);
             if (obj->flag == 0)
             {
-            	object_table[signal].observed = true;
+            	cache_obj->observed = true;
             }
             else
             {
-            	object_table[signal].observed = false;
+            	cache_obj->observed = false;
             }
             break;
         case MSG_READ_REQUEST:
             /* return the cached value */
-            snprintf(buf, MAX_BUF, "AT+QLWRDRSP=%d,1,%d,%d,%d,5,1,%d,0", obj->message_id,
-                        obj->object_id, obj->instance_id, obj->resource_id, object_table[signal].value);
+            snprintf(buf, MAX_BUF, "AT+QLWRDRSP=%d,1,%d,%d,%d,5,1,%d,0", cache_obj->message_id,
+            		cache_obj->object_id, cache_obj->instance_id, cache_obj->resource_id, cache_obj->value);
             break;
         case MSG_WRITE_REQUEST:
             /* reject any write request */
@@ -431,6 +452,7 @@ void comm_manager_task(void)
         if (evt.status == osEventMail)
         {
             mail_t *mail = (mail_t*)evt.value.p;
+            Lwm2mObject *cache_obj;
             
             switch (mail->action) 
             {
@@ -442,21 +464,24 @@ void comm_manager_task(void)
             		break;
 
                 case MSG_UPDATE_VALUE:
-                    /* store the value in the cache, for future use */
-                    object_table[mail->signal].value = mail->value;
+                	/* TODO: extract to a function, parse NULL */
+					cache_obj = map_signal_to_cache_table((int)mail->signal);
+					/* store the value in the cache, for future use */
+                	cache_obj->value = mail->value;
                     /* only report the values if the module is registered */
                     if (module_state == MODULE_CONFIGURED)
                     {
-                    	if (object_table[mail->signal].observed == true)
+                    	if (cache_obj->observed == true)
                     	{
-                    		comm_manager_notify_server(mail->signal, object_table[mail->signal].value);
+                    		comm_manager_notify_server(cache_obj);
                     	}
                     	else
                     	{
-                    		APP_LOG("Object[%d] is not observed\r\n",object_table[mail->signal].object_id);
+                    		APP_LOG("Object[%d] is not observed\r\n",cache_obj->object_id);
                     	}
                     }
                     break;
+
                 case MSG_UPDATE_REGISTRATION:
                     APP_LOG("registration value[%d]\r\n", mail->value);
                     if (mail->value == 1)
