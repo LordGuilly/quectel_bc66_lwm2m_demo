@@ -95,6 +95,7 @@ const char *atcmd_lwm2m_setup_seq[] = {
 Lwm2mObject* map_object_to_cache_table(Lwm2mObject *obj)
 {
     int index = 0;
+    Lwm2mObject *retval = NULL;
     
     for (index = 0; index < MSG_LAST_SIGNAL; index++)
     {
@@ -102,24 +103,29 @@ Lwm2mObject* map_object_to_cache_table(Lwm2mObject *obj)
             (object_table[index].instance_id == obj->instance_id) &&
             (object_table[index].resource_id == obj->resource_id))
         {
+        	retval = &object_table[index];
             break;        
         }
     }           
-    return &object_table[index];
+	MBED_ASSERT(retval);
+    return retval;
 }
 
 Lwm2mObject* map_signal_to_cache_table(int signal)
 {
     int index = 0;
+    Lwm2mObject *retval = NULL;
 
     for (index = 0; index < MSG_LAST_SIGNAL; index++)
     {
         if (object_table[index].signal == (int) signal)
         {
-            break;
+        	retval = &object_table[index];
+        	break;
         }
     }
-    return &object_table[index];
+    MBED_ASSERT(retval);
+    return retval;
 }
 
 void registration_callback(void)
@@ -326,6 +332,7 @@ bool comm_manager_add_custom_objects(void)
 	bool retval = true;
 	char buf[MAX_BUF] = { 0 };
 	int index;
+
 	/* delete objects, don't care about errors, as they may not exist */
 	for (index = 0; index < MSG_LAST_SIGNAL ; index++)
 	{
@@ -343,9 +350,14 @@ bool comm_manager_add_custom_objects(void)
 		snprintf(buf, MAX_BUF, "at+qlwaddobj=%d,%d,1,\"%d\"", object_table[index].object_id,
 							object_table[index].instance_id, object_table[index].resource_id);
 		APP_LOG("Sending[%s]\r\n", buf);
-		comm_module_driver_send_atcmd_and_waitfor_urc(buf, "+QLWADDOBJ: 0");
+
+		if (comm_module_driver_send_atcmd_and_waitfor_urc(buf, "+QLWADDOBJ: 0") == false)
+		{
+			APP_LOG("FAILED!\r\n", buf);
+			retval = false;
+		}
 		comm_module_driver_flush();
-		retval = false;
+
 	}
 
 	return retval;
@@ -379,7 +391,6 @@ void comm_module_manager_reply_request(message_notification_type_t request, Lwm2
     char buf[MAX_BUF] = { 0 };
 
     /* search in object_table looking for obj/ins/res match */
-    /* TODO: parse NULL return */
     Lwm2mObject *cache_obj = map_object_to_cache_table(obj);
 
     APP_LOG("request [%d]\r\n", request);
@@ -394,7 +405,7 @@ void comm_module_manager_reply_request(message_notification_type_t request, Lwm2
     {
         case MSG_OBSERVE_REQUEST:
             /* accept all the observes*/
-            snprintf(buf, MAX_BUF, "AT+QLWOBSRSP=%d,1,%d,%d,%d,5,1,%d,0", cache_obj->message_id,
+            snprintf(buf, MAX_BUF, "AT+QLWOBSRSP=%d,1,%d,%d,%d,5,1,%d,0", obj->message_id,
             		cache_obj->object_id, cache_obj->instance_id, cache_obj->resource_id, cache_obj->value);
             if (obj->flag == 0)
             {
@@ -407,7 +418,7 @@ void comm_module_manager_reply_request(message_notification_type_t request, Lwm2
             break;
         case MSG_READ_REQUEST:
             /* return the cached value */
-            snprintf(buf, MAX_BUF, "AT+QLWRDRSP=%d,1,%d,%d,%d,5,1,%d,0", cache_obj->message_id,
+            snprintf(buf, MAX_BUF, "AT+QLWRDRSP=%d,1,%d,%d,%d,5,1,%d,0", obj->message_id,
             		cache_obj->object_id, cache_obj->instance_id, cache_obj->resource_id, cache_obj->value);
             break;
         case MSG_WRITE_REQUEST:
@@ -464,8 +475,8 @@ void comm_manager_task(void)
             		break;
 
                 case MSG_UPDATE_VALUE:
-                	/* TODO: extract to a function, parse NULL */
-					cache_obj = map_signal_to_cache_table((int)mail->signal);
+                	cache_obj = map_signal_to_cache_table((int)mail->signal);
+
 					/* store the value in the cache, for future use */
                 	cache_obj->value = mail->value;
                     /* only report the values if the module is registered */
