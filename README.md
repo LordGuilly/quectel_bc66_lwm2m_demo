@@ -45,7 +45,11 @@ It is currently tested with BC66 firmware version A07
 ```
    mbed target NUCLEO_F746ZG
 ```
-5. Compile the code, and download it to the target
+5. Fetch the MBED-OS code
+```
+   mbed deploy
+```
+6. Compile the code, and download it to the target
 ```
    mbed compile
 ```

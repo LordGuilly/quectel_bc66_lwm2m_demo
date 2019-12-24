@@ -18,33 +18,29 @@
 #ifndef _LWM2M_DEMO_HEADER__
 #define _LWM2M_DEMO_HEADER__
 
-//#define MOCK_MODEM_DEBUG
-
 #define xstr(a) str(a)
 #define str(a) #a
+
+/* CONFIGURATION DEFINES
+ * Make sure these values match your system under test*/
+#define LWM2M_SERVER_URL        "leshan.eclipse.org"
+
+#define LWM2M_SERVER_PORT       5683   
+#define LWM2M_DEVICE_IDENTIFIER "LWM2M-Demo-STM32_BC66"
+#define NBIOT_SERVICE_PROVIDER_APN    "openlab.vodafone.iot"
+#define NBIOT_BAND      (20)
+#define MODEM_TX_PIN    (D1)
+#define MODEM_RX_PIN    (D0)
+#define MODEM_PWRKEY_N_PIN (D12)
+#define MODEM_RESET_N_PIN (D13)
+#define MODEM_BAUDRATE  (115200)
+/* END OF MANDATORY DEFINES
+
 
 #define LED_PERIOD_IN_SECONDS (10)
 
 #define MODULE_FW_VERSION "BC66NBR01A07"
-
-#define LWM2M_SERVER_URL        "www.testmyquectel.net"
-#define LWM2M_SERVER_PORT       5683   
-#define LWM2M_DEVICE_IDENTIFIER "LWM2M-Demo-STM32_BC66"
 #define LWM2M_DEVICE_LIFETIME   3600
-
-#define NBIOT_SERVICE_PROVIDER_APN    "openlab.vodafone.iot"
-#define NBIOT_BAND      20
-
-#ifdef MOCK_MODEM_DEBUG
-#define MODEM_TX_PIN    (USBTX)
-#define MODEM_RX_PIN    (USBRX)
-#define MODEM_BAUDRATE  (9600)
-#else
-#define MODEM_TX_PIN    (D1)
-#define MODEM_RX_PIN    (D0)
-#define MODEM_BAUDRATE  (115200)
-#endif
-
 
 
 

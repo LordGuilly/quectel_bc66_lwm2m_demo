@@ -25,9 +25,8 @@ InterruptIn user_button(USER_BUTTON);
 DigitalOut led_key(LED3);
 DigitalOut led_periodic(LED2);
 DigitalOut led_state(LED1);
-DigitalOut pwrkey_n(D12);
-DigitalOut reset_n(D13);
-DigitalOut power_en(A0);
+DigitalOut pwrkey_n(MODEM_PWRKEY_N_PIN);
+DigitalOut reset_n(MODEM_RESET_N_PIN);
 
 /* OS resources */
 EventQueue io_queue(32 * EVENTS_EVENT_SIZE);
